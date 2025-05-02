@@ -2,16 +2,19 @@
 import { MutableRefObject } from 'react';
 import { toast } from 'sonner';
 import { Product } from '@/types/product';
-import { ExcalidrawImperativeAPI, ExcalidrawElement } from '@excalidraw/excalidraw/types/types';
+import { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types';
+
+// Use any for ExcalidrawElement to avoid type issues
+type ExcalidrawElement = any;
 
 interface ExcalidrawHandlersProps {
   excalidrawAPIRef: MutableRefObject<ExcalidrawImperativeAPI | null>;
   productElements: Map<string, Product>;
-  setProductElements: (elements: Map<string, Product>) => void;
   updateProductElements: (updater: (prev: Map<string, Product>) => Map<string, Product>) => void;
   addProductElement: (id: string, product: Product) => void;
   onElementSelect: (element: any) => void;
   onProductsChange: (products: any[]) => void;
+  bulkSetProductElements: (elements: [string, Product][]) => void;
 }
 
 export const useExcalidrawHandlers = ({

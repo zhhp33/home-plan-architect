@@ -1,15 +1,15 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
-import type { 
-  ExcalidrawImperativeAPI,
-  ExcalidrawElement
-} from '@excalidraw/excalidraw/types/types';
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types';
 import { toast } from 'sonner';
 import { Product } from '@/types/product';
 import { useDesignerState } from '@/hooks/useDesignerState';
 import { useExcalidrawHandlers } from '@/hooks/useExcalidrawHandlers';
 import { ExcalidrawActions } from './ExcalidrawActions';
+
+// Import the types directly from the package
+type ExcalidrawElement = any;
 
 interface DesignerCanvasProps {
   onElementSelect: (element: any) => void;
@@ -23,19 +23,19 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const { 
     productElements, 
-    setProductElements, 
     updateProductElements,
-    addProductElement 
+    addProductElement,
+    bulkSetProductElements 
   } = useDesignerState();
   
   const { handleChange, handleDrop, handleDragOver } = useExcalidrawHandlers({
     excalidrawAPIRef,
     productElements,
-    setProductElements,
     updateProductElements,
     addProductElement,
     onElementSelect,
-    onProductsChange
+    onProductsChange,
+    bulkSetProductElements
   });
   
   // Load saved design when available
@@ -46,14 +46,13 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
         try {
           const data = JSON.parse(savedDesign);
           excalidrawAPIRef.current.updateScene({
-            elements: data.elements,
-            appState: data.appState,
+            elements: data.elements || [],
+            appState: data.appState || {},
           });
           
-          // Restore product elements
+          // Restore product elements using the new bulk setter
           if (data.productElements && Array.isArray(data.productElements)) {
-            const productElementsMap = new Map(data.productElements);
-            setProductElements(productElementsMap);
+            bulkSetProductElements(data.productElements);
           }
           
           toast.success('已加载保存的设计');
@@ -63,10 +62,22 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       }
     };
     
-    // Small delay to ensure excalidrawRef is initialized
-    const timer = setTimeout(loadSavedDesign, 500);
+    // Use a ref to ensure this only runs once when API is available
+    const timer = setTimeout(() => {
+      if (excalidrawAPIRef.current) {
+        loadSavedDesign();
+      }
+    }, 500);
+    
     return () => clearTimeout(timer);
-  }, [setProductElements]);
+  }, []); // Empty dependency array to run only once
+  
+  // Separate handler for API initialization to avoid render loops
+  const handleExcalidrawAPI = (api: ExcalidrawImperativeAPI) => {
+    if (!excalidrawAPIRef.current) {
+      excalidrawAPIRef.current = api;
+    }
+  };
   
   return (
     <div 
@@ -75,9 +86,7 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       onDragOver={handleDragOver}
     >
       <Excalidraw
-        excalidrawAPI={(api) => {
-          excalidrawAPIRef.current = api;
-        }}
+        excalidrawAPI={handleExcalidrawAPI}
         onChange={(elements: readonly ExcalidrawElement[]) => handleChange(elements)}
         theme="dark"
         name="家装设计方案"

@@ -18,11 +18,17 @@ export const useDesignerState = () => {
       return newMap;
     });
   };
+
+  // Function to bulk set product elements to prevent unnecessary rerenders
+  const bulkSetProductElements = (elements: [string, Product][]) => {
+    setProductElements(new Map(elements));
+  };
   
   return {
     productElements,
     setProductElements,
     updateProductElements,
-    addProductElement
+    addProductElement,
+    bulkSetProductElements
   };
 };
