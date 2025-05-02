@@ -22,21 +22,10 @@ const Index = () => {
   const handlePropertyChange = (property: string, value: any) => {
     if (!selectedElement) return;
     
-    // This would typically update the canvas element, but in this demo
-    // we just update our local state
     setSelectedElement({
       ...selectedElement,
       [property]: value
     });
-    
-    // In a real implementation, we would update the Excalidraw element
-    // excalidrawRef.current.updateScene({
-    //   elements: elements.map(el => 
-    //     el.id === selectedElement.id 
-    //       ? { ...el, [property]: value } 
-    //       : el
-    //   )
-    // });
   };
   
   const handleProductDragStart = (product: any) => {
@@ -60,7 +49,7 @@ const Index = () => {
   };
   
   return (
-    <div className="flex flex-col h-screen bg-app-background text-white">
+    <div className="flex flex-col h-screen bg-[#121420] text-white">
       {/* Toolbar */}
       <Toolbar 
         onSave={handleSave} 
@@ -70,12 +59,17 @@ const Index = () => {
       
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Product Library */}
-        <div className="w-64 h-full designer-panel">
-          <ProductLibrary onDragStart={handleProductDragStart} />
+        <div className="w-72 h-full border-r border-gray-700/30 bg-[#1a1c2a]">
+          <div className="p-4 border-b border-gray-700/30">
+            <h2 className="text-lg font-medium">产品库</h2>
+          </div>
+          <div className="overflow-y-auto h-[calc(100%-3.5rem)]">
+            <ProductLibrary onDragStart={handleProductDragStart} />
+          </div>
         </div>
         
         {/* Main Canvas */}
-        <div className="flex-1 h-full">
+        <div className="flex-1 h-full bg-[#1c1c28] relative">
           <DesignerCanvas 
             onElementSelect={setSelectedElement} 
             onProductsChange={setProducts}
@@ -83,11 +77,16 @@ const Index = () => {
         </div>
         
         {/* Right Sidebar - Property Panel */}
-        <div className="w-72 h-full designer-panel">
-          <PropertyPanel 
-            selectedElement={selectedElement}
-            onPropertyChange={handlePropertyChange}
-          />
+        <div className="w-80 h-full border-l border-gray-700/30 bg-[#1a1c2a]">
+          <div className="p-4 border-b border-gray-700/30">
+            <h2 className="text-lg font-medium">属性面板</h2>
+          </div>
+          <div className="overflow-y-auto h-[calc(100%-3.5rem)]">
+            <PropertyPanel 
+              selectedElement={selectedElement}
+              onPropertyChange={handlePropertyChange}
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -130,7 +130,18 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       
       // Add the element to the canvas
       const scene = excalidrawRef.current.getSceneElements();
-      const newElementWithId = excalidrawRef.current.addToScene([newElement])[0];
+      // Use the correct API method
+      const elements = excalidrawRef.current.getSceneElements();
+      excalidrawRef.current.updateScene({
+        elements: [
+          ...elements,
+          newElement
+        ]
+      });
+      
+      // Find the newly added element (should be the last one)
+      const updatedElements = excalidrawRef.current.getSceneElements();
+      const newElementWithId = updatedElements[updatedElements.length - 1];
       
       if (newElementWithId && newElementWithId.id) {
         // Store the product data associated with this element
@@ -238,12 +249,14 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   
   return (
     <div 
-      className="w-full h-full relative" 
+      className="w-full h-full relative bg-[#1c1c28]" 
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
       <Excalidraw
-        excalidrawRef={(api: ExcalidrawImperativeAPI) => (excalidrawRef.current = api)}
+        ref={(api) => {
+          if (api) excalidrawRef.current = api;
+        }}
         onChange={handleChange}
         theme="dark"
         name="家装设计方案"
