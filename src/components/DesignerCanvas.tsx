@@ -1,7 +1,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types';
+import type { 
+  ExcalidrawImperativeAPI,
+  ExcalidrawElement,
+  NonDeletedExcalidrawElement
+} from '@excalidraw/excalidraw/types/types';
 import { toast } from 'sonner';
 
 interface Product {
@@ -21,10 +25,10 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   onElementSelect,
   onProductsChange
 }) => {
-  const excalidrawRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const [productElements, setProductElements] = useState<Map<string, Product>>(new Map());
   
-  const handleChange = (elements: any[]) => {
+  const handleChange = (elements: readonly ExcalidrawElement[]) => {
     // Find the selected element
     const selectedElements = elements.filter(el => el.isSelected);
     if (selectedElements.length === 1) {
@@ -94,65 +98,66 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       const productData = JSON.parse(e.dataTransfer.getData('application/json')) as Product;
       const { clientX, clientY } = e;
       
-      if (!excalidrawRef.current) return;
+      if (!excalidrawAPIRef.current) return;
       
       // Get canvas position
-      const { x: canvasX, y: canvasY } = (excalidrawRef.current as any).getAppState().scrollX 
-        ? { 
-            x: -(excalidrawRef.current as any).getAppState().scrollX, 
-            y: -(excalidrawRef.current as any).getAppState().scrollY 
-          } 
-        : { x: 0, y: 0 };
+      const appState = excalidrawAPIRef.current.getAppState();
+      const scrollX = appState.scrollX || 0;
+      const scrollY = appState.scrollY || 0;
+      const zoom = appState.zoom?.value || 1;
       
       // Convert screen coordinates to canvas coordinates
-      const sceneX = clientX - canvasX;
-      const sceneY = clientY - canvasY;
+      const sceneX = (clientX - scrollX) / zoom;
+      const sceneY = (clientY - scrollY) / zoom;
       
-      // Create a new element
-      const newElement = {
-        type: 'rectangle',
+      // Let Excalidraw create the element with proper ID and properties
+      const elements = excalidrawAPIRef.current.getSceneElements();
+      
+      // Use Excalidraw's own element creation methods instead of creating our own
+      const id = Math.random().toString(36).substring(2, 10);
+      const newElement: any = {
+        id,
+        type: "rectangle",
         x: sceneX,
         y: sceneY,
         width: 100,
         height: 100,
-        backgroundColor: '#f1f1f1',
-        strokeColor: '#000000',
-        fillStyle: 'solid',
+        backgroundColor: "#f1f1f1",
+        strokeColor: "#000000",
+        fillStyle: "solid",
         strokeWidth: 1,
+        strokeStyle: "solid",
         roughness: 0,
         opacity: 100,
+        groupIds: [],
+        roundness: null,
+        boundElements: null,
+        link: null,
+        locked: false,
+        angle: 0,
         text: productData.name,
         fontSize: 16,
         fontFamily: 1,
-        textAlign: 'center',
-        verticalAlign: 'middle',
+        textAlign: "center",
+        verticalAlign: "middle",
+        baseline: 18,
+        containerId: null,
+        isDeleted: false,
       };
       
-      // Add the element to the canvas
-      const scene = excalidrawRef.current.getSceneElements();
-      // Use the correct API method
-      const elements = excalidrawRef.current.getSceneElements();
-      excalidrawRef.current.updateScene({
-        elements: [
-          ...elements,
-          newElement
-        ]
+      // Add the element to the canvas using the proper API method
+      excalidrawAPIRef.current.updateScene({
+        elements: [...elements, newElement as ExcalidrawElement]
       });
       
-      // Find the newly added element (should be the last one)
-      const updatedElements = excalidrawRef.current.getSceneElements();
-      const newElementWithId = updatedElements[updatedElements.length - 1];
+      // Store the product data associated with this element
+      setProductElements(prev => {
+        const newMap = new Map(prev);
+        newMap.set(id, productData);
+        return newMap;
+      });
       
-      if (newElementWithId && newElementWithId.id) {
-        // Store the product data associated with this element
-        setProductElements(prev => {
-          const newMap = new Map(prev);
-          newMap.set(newElementWithId.id, productData);
-          return newMap;
-        });
-        
-        toast.success(`已添加 ${productData.name}`);
-      }
+      toast.success(`已添加 ${productData.name}`);
     } catch (error) {
       console.error('Error handling drop:', error);
     }
@@ -163,17 +168,17 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   };
   
   const exportToImage = async () => {
-    if (!excalidrawRef.current) return;
+    if (!excalidrawAPIRef.current) return;
     
     try {
       const blob = await exportToBlob({
-        elements: excalidrawRef.current.getSceneElements(),
+        elements: excalidrawAPIRef.current.getSceneElements(),
         appState: {
           exportBackground: true,
           viewBackgroundColor: '#ffffff',
           exportWithDarkMode: false,
         },
-        files: excalidrawRef.current.getFiles(),
+        files: excalidrawAPIRef.current.getFiles(),
       });
       
       // Create a download link
@@ -191,12 +196,12 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   };
   
   const saveDesign = () => {
-    if (!excalidrawRef.current) return;
+    if (!excalidrawAPIRef.current) return;
     
     try {
-      const elements = excalidrawRef.current.getSceneElements();
-      const appState = excalidrawRef.current.getAppState();
-      const files = excalidrawRef.current.getFiles();
+      const elements = excalidrawAPIRef.current.getSceneElements();
+      const appState = excalidrawAPIRef.current.getAppState();
+      const files = excalidrawAPIRef.current.getFiles();
       
       // Convert product elements map to array for serialization
       const productElementsArray = Array.from(productElements.entries());
@@ -221,10 +226,10 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   useEffect(() => {
     const loadSavedDesign = async () => {
       const savedDesign = localStorage.getItem('homeDesignProject');
-      if (savedDesign && excalidrawRef.current) {
+      if (savedDesign && excalidrawAPIRef.current) {
         try {
           const data = JSON.parse(savedDesign);
-          excalidrawRef.current.updateScene({
+          excalidrawAPIRef.current.updateScene({
             elements: data.elements,
             appState: data.appState,
           });
@@ -254,8 +259,8 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       onDragOver={handleDragOver}
     >
       <Excalidraw
-        ref={(api) => {
-          if (api) excalidrawRef.current = api;
+        excalidrawAPI={(api) => {
+          excalidrawAPIRef.current = api;
         }}
         onChange={handleChange}
         theme="dark"
