@@ -1,8 +1,9 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import type { 
-  ExcalidrawImperativeAPI
+  ExcalidrawImperativeAPI,
+  ExcalidrawElement
 } from '@excalidraw/excalidraw/types/types';
 import { toast } from 'sonner';
 import { Product } from '@/types/product';
@@ -20,12 +21,19 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   onProductsChange
 }) => {
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
-  const { productElements, setProductElements } = useDesignerState();
+  const { 
+    productElements, 
+    setProductElements, 
+    updateProductElements,
+    addProductElement 
+  } = useDesignerState();
   
   const { handleChange, handleDrop, handleDragOver } = useExcalidrawHandlers({
     excalidrawAPIRef,
     productElements,
     setProductElements,
+    updateProductElements,
+    addProductElement,
     onElementSelect,
     onProductsChange
   });
@@ -70,7 +78,7 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
         excalidrawAPI={(api) => {
           excalidrawAPIRef.current = api;
         }}
-        onChange={handleChange}
+        onChange={(elements: readonly ExcalidrawElement[]) => handleChange(elements)}
         theme="dark"
         name="家装设计方案"
         UIOptions={{
