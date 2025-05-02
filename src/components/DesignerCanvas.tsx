@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
-import type { ExcalidrawElement, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types';
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types';
 import { toast } from 'sonner';
 
 interface Product {
@@ -24,7 +24,7 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   const excalidrawRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const [productElements, setProductElements] = useState<Map<string, Product>>(new Map());
   
-  const handleChange = (elements: readonly ExcalidrawElement[]) => {
+  const handleChange = (elements: any[]) => {
     // Find the selected element
     const selectedElements = elements.filter(el => el.isSelected);
     if (selectedElements.length === 1) {
@@ -129,12 +129,14 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       };
       
       // Add the element to the canvas
-      const addedElements = excalidrawRef.current.addElements([newElement]);
-      if (addedElements && addedElements.length > 0) {
+      const scene = excalidrawRef.current.getSceneElements();
+      const newElementWithId = excalidrawRef.current.addToScene([newElement])[0];
+      
+      if (newElementWithId && newElementWithId.id) {
         // Store the product data associated with this element
         setProductElements(prev => {
           const newMap = new Map(prev);
-          newMap.set(addedElements[0].id, productData);
+          newMap.set(newElementWithId.id, productData);
           return newMap;
         });
         
@@ -197,6 +199,7 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       
       const json = JSON.stringify(data);
       localStorage.setItem('homeDesignProject', json);
+      toast.success('设计已保存');
     } catch (error) {
       console.error('Save failed:', error);
       toast.error('保存失败');
@@ -216,8 +219,10 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
           });
           
           // Restore product elements
-          const productElementsMap = new Map(data.productElements);
-          setProductElements(productElementsMap);
+          if (data.productElements && Array.isArray(data.productElements)) {
+            const productElementsMap = new Map(data.productElements);
+            setProductElements(productElementsMap as Map<string, Product>);
+          }
           
           toast.success('已加载保存的设计');
         } catch (error) {
@@ -238,7 +243,7 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
       onDragOver={handleDragOver}
     >
       <Excalidraw
-        ref={excalidrawRef}
+        excalidrawRef={(api: ExcalidrawImperativeAPI) => (excalidrawRef.current = api)}
         onChange={handleChange}
         theme="dark"
         name="家装设计方案"
