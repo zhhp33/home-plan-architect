@@ -15,77 +15,15 @@ interface ExcalidrawHandlersProps {
   onElementSelect: (element: any) => void;
   onProductsChange: (products: any[]) => void;
   bulkSetProductElements: (elements: [string, Product][]) => void;
+  handleChange: (elements: readonly ExcalidrawElement[]) => void;
 }
 
 export const useExcalidrawHandlers = ({
   excalidrawAPIRef,
   productElements,
   addProductElement,
-  onElementSelect,
-  onProductsChange
+  handleChange
 }: ExcalidrawHandlersProps) => {
-  const handleChange = (elements: readonly ExcalidrawElement[]) => {
-    // Find the selected element
-    const selectedElements = elements.filter(el => el.isSelected);
-    if (selectedElements.length === 1) {
-      const selectedElement = selectedElements[0];
-      const productData = productElements.get(selectedElement.id);
-      
-      if (productData) {
-        onElementSelect({
-          ...selectedElement,
-          productName: productData.name,
-          productType: productData.type,
-          price: productData.price,
-          type: 'product'
-        });
-      } else {
-        onElementSelect(selectedElement);
-      }
-    } else if (selectedElements.length === 0) {
-      onElementSelect(null);
-    }
-    
-    // Update products list for pricing
-    const products: { 
-      id: string; 
-      name: string; 
-      type: string; 
-      price: number; 
-      quantity: number; 
-    }[] = [];
-    
-    // Create a map to count occurrences of each product
-    const productCounts = new Map<string, number>();
-    
-    elements.forEach(el => {
-      const productData = productElements.get(el.id);
-      if (productData) {
-        const key = `${productData.id}-${productData.name}`;
-        const currentCount = productCounts.get(key) || 0;
-        productCounts.set(key, currentCount + 1);
-      }
-    });
-    
-    // Convert to array for the pricing component
-    productCounts.forEach((quantity, key) => {
-      const [id, name] = key.split('-');
-      const productData = Array.from(productElements.values())
-        .find(p => p.id === id && p.name === name);
-      
-      if (productData) {
-        products.push({
-          id: productData.id,
-          name: productData.name,
-          type: productData.type,
-          price: productData.price,
-          quantity
-        });
-      }
-    });
-    
-    onProductsChange(products);
-  };
   
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -157,6 +95,13 @@ export const useExcalidrawHandlers = ({
       addProductElement(id, productData);
       
       toast.success(`已添加 ${productData.name}`);
+      
+      // Trigger change handler manually to update UI
+      if (excalidrawAPIRef.current) {
+        setTimeout(() => {
+          handleChange(excalidrawAPIRef.current!.getSceneElements());
+        }, 0);
+      }
     } catch (error) {
       console.error('Error handling drop:', error);
     }
@@ -167,7 +112,6 @@ export const useExcalidrawHandlers = ({
   };
 
   return {
-    handleChange,
     handleDrop,
     handleDragOver
   };
